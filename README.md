@@ -4,12 +4,14 @@ Moves the carriage of the lab's igus **ZLW-20200** linear rail (about 3 m long,
 NEMA 24 stepper with a 5:1 gearbox) through a list of stops. The rail is driven
 by an igus **dryve D1** motor controller, and this script talks to the D1 over
 an Ethernet cable. No programming is needed: edit the numbers at the top of
-`run_path.py` and run it.
+`run_path.py` (a list of stops) or `display_sweep.py` (back and forth for
+hours) and run it.
 
 ```
 igus_rail/
 ├── README.md          <- this file: setup from scratch, running, troubleshooting
 ├── run_path.py        <- THE script. Edit the SETTINGS block at the top, run it.
+├── display_sweep.py   <- same idea, but shuttles LOW <-> HIGH for hours (display / soak run)
 ├── dryve_d1/          <- driver package that run_path.py imports (plain Python, nothing to install)
 │   ├── gateway.py     <- Modbus TCP Gateway telegrams over a TCP socket
 │   ├── cia402.py      <- object indices, control/status words, drive states
@@ -246,6 +248,34 @@ motor is disabled or the D1 is powered down. That is why every run re-zeros at
 the start and parks back at 0 mm at the end. If a run is interrupted, the
 script prints where it left the carriage; push it back to the zero end before
 the next run.
+
+## Running back and forth for hours
+
+`display_sweep.py` shuttles the carriage between two positions for a set
+number of hours, for a running display or a soak test. Same preparation as
+`run_path.py` (steps 1 to 6, carriage at the zero end). Edit its SETTINGS
+block (`LOW`, `HIGH`, `SPEED`, `HOURS`) or give the numbers on the command
+line:
+
+```
+python display_sweep.py              # ends and hours from the file (currently 0 to 1500 mm, 3 h)
+python display_sweep.py 200 2000     # ends in mm
+python display_sweep.py 200 2000 4   # ... for 4 hours (0 = until Ctrl-C)
+```
+
+It goes to LOW, then LOW to HIGH to LOW and so on, printing one line per leg.
+When the time is up it finishes the leg it is on and parks at 0 mm. Ctrl-C
+stops it earlier. Before a long run:
+
+- **Plug the laptop in and leave the lid open.** The script asks the OS not
+  to sleep, but closing the lid still sleeps most laptops. If the link drops
+  anyway, the script reconnects and continues, as long as the drive was never
+  disabled in the meantime.
+- **A drive fault stops the run** and is not retried. Fix the cause, push the
+  carriage to the zero end, start again.
+- **There is no encoder**, so skipped steps go unnoticed and the positions
+  drift. Keep LOW and HIGH well inside the rail and look at the carriage now
+  and then.
 
 ## Troubleshooting
 
