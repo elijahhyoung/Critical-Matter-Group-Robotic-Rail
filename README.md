@@ -258,7 +258,7 @@ block (`LOW`, `HIGH`, `SPEED`, `HOURS`) or give the numbers on the command
 line:
 
 ```
-python display_sweep.py              # ends and hours from the file (currently 0 to 1500 mm, 3 h)
+python display_sweep.py              # ends and hours from the SETTINGS block in the file
 python display_sweep.py 200 2000     # ends in mm
 python display_sweep.py 200 2000 4   # ... for 4 hours (0 = until Ctrl-C)
 ```
