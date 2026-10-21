@@ -1,1 +1,3 @@
-# no third-party dependencies; Python 3.9+ standard library only
+# The rail scripts (run_path.py, display_sweep.py, dryve_d1/) need nothing beyond the
+# Python 3.9+ standard library.  Only the arm scripts (Dance_Cycle.py, run_both.py) need this:
+xarm-python-sdk

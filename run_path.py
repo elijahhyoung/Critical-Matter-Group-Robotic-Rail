@@ -24,7 +24,7 @@ Ctrl-C stops the carriage with a controlled deceleration.
 # =============================== SETTINGS ====================================
 HOST = "169.254.116.59"   # the IP that scrolls on the D1's X9 display
 
-STOPS = [200, 500, 2450]   # mm from the start, visited in this order
+STOPS = [200, 500, 1500]   # mm from the start, visited in this order
 SPEED = 100                # mm/s    how fast to travel between stops
 ACCEL = 300               # mm/s^2  how quickly to speed up and slow down
 PAUSE = 1.0               # seconds to wait at each stop

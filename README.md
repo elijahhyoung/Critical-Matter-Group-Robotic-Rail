@@ -5,20 +5,23 @@ NEMA 24 stepper with a 5:1 gearbox) through a list of stops. The rail is driven
 by an igus **dryve D1** motor controller, and this script talks to the D1 over
 an Ethernet cable. No programming is needed: edit the numbers at the top of
 `run_path.py` (a list of stops) or `display_sweep.py` (back and forth for
-hours) and run it.
+hours) and run it. `run_both.py` runs the sweep together with the xArm6 dance
+in `Dance_Cycle.py` (see "Running the arm dance and the rail sweep together").
 
 ```
 igus_rail/
 ├── README.md          <- this file: setup from scratch, running, troubleshooting
 ├── run_path.py        <- THE script. Edit the SETTINGS block at the top, run it.
 ├── display_sweep.py   <- same idea, but shuttles LOW <-> HIGH for hours (display / soak run)
+├── Dance_Cycle.py     <- the xArm6 dance on its own (needs the xArm SDK, see requirements.txt)
+├── run_both.py        <- the show: display_sweep.py and Dance_Cycle.py at the same time
 ├── dryve_d1/          <- driver package that run_path.py imports (plain Python, nothing to install)
 │   ├── gateway.py     <- Modbus TCP Gateway telegrams over a TCP socket
 │   ├── cia402.py      <- object indices, control/status words, drive states
 │   ├── units.py       <- mm <-> drive-unit scaling
 │   └── rail.py        <- Rail: enable / home / move / stop
 ├── config/            <- the D1's saved configuration; Load it if the D1 loses its settings
-└── requirements.txt   <- empty on purpose: Python standard library only
+└── requirements.txt   <- only the xArm SDK; the rail itself needs nothing beyond the standard library
 ```
 
 ## Read this first: safety
@@ -43,8 +46,9 @@ igus_rail/
   the laptop is fine; no switch or router is needed.
 - **Computer:** Windows, macOS or Linux with an Ethernet port (a USB-to-Ethernet
   adapter works).
-- **Software:** **Python 3.9 or newer.** Nothing else: no `pip install`, no
-  drivers.
+- **Software:** **Python 3.9 or newer.** For the rail alone nothing else: no
+  `pip install`, no drivers. The arm scripts (`Dance_Cycle.py`, `run_both.py`)
+  also need the xArm SDK: `pip install xarm-python-sdk`.
 - **This folder:** clone or download it. `run_path.py` and the `dryve_d1/`
   folder must stay next to each other.
 
@@ -277,6 +281,73 @@ stops it earlier. Before a long run:
   drift. Keep LOW and HIGH well inside the rail and look at the carriage now
   and then.
 
+## Running the arm dance and the rail sweep together
+
+`run_both.py` is the show: the carriage sweeps back and forth for hours while
+the xArm6 riding on it repeats its two-minute dance. The two scripts stay
+independent; `run_both.py` only starts them, repeats the dance while the sweep
+runs, relays what both print (prefixed `[arm]` / `[rail]`), and stops both if
+one of them fails.
+
+Before a run:
+
+- The arm must be at the START pose in `Dance_Cycle.py` (within 1 degree) and
+  the carriage at the zero end, as always.
+- The arm's control box and the D1 are on different networks (the arm on
+  `192.168.1.x`, the D1 on `169.254.x.x`), so the computer needs a link to
+  both. See "Setting up another computer".
+- Edit `display_sweep.py` for the sweep (`LOW`, `HIGH`, `SPEED`, `HOURS`) and
+  `Dance_Cycle.py` for the dance. With the arm on the carriage keep the rail
+  gentle: 50 mm/s and 25 mm/s^2 have been fine. `run_both.py` refuses sweep
+  settings above its own `MAX_RAIL_SPEED` / `MAX_RAIL_ACCEL` (100 / 100).
+- **No collision checking of any kind is done.** Make sure the dancing arm
+  cannot reach anything along the whole sweep.
+
+```
+python run_both.py              # ends and hours from display_sweep.py
+python run_both.py 200 2000 4   # 200 <-> 2000 mm for 4 hours, like display_sweep.py
+```
+
+It asks once whether the arm and carriage are in place, starts the sweep, and
+starts the dance as soon as the carriage is homed and moving. When the sweep's
+hours are up the carriage parks at 0, the dance under way finishes, and the
+script exits. **Ctrl-C stops both** (each does its own controlled stop; the
+arm script then prints a Python traceback, which is normal). If one script
+fails, the other is sent Ctrl-C as well.
+
+## Setting up another computer
+
+Everything the show needs is in this repository plus one pip package. On a new
+Windows PC (the lab's Dell, for example):
+
+1. **Python 3.12** from python.org, ticking "Add python.exe to PATH". Then in a
+   new terminal: `pip install xarm-python-sdk`.
+2. **This repository:** `git clone https://github.com/elijahhyoung/Critical-Matter-Group-Robotic-Rail.git`
+   (or download the ZIP). Keep the folder together; the scripts import
+   `dryve_d1/` from next to themselves.
+3. **Two Ethernet links.** The arm needs an adapter with a fixed address on its
+   network: Settings > Network & Internet > Ethernet > that adapter > IP
+   assignment > Edit > Manual, IPv4 on, IP `192.168.1.10`, subnet mask
+   `255.255.255.0`, gateway blank. The D1 needs a second adapter (a USB
+   adapter is fine) left on Automatic: with no router on that cable Windows
+   gives it a `169.254.x.x` address by itself within a minute. The laptop used
+   two USB-to-Ethernet adapters; moving those to the new PC is the quickest
+   route. (Later, one switch with the D1 on a Manual IP in the arm's network
+   would do with a single port; then change `HOST` in the rail scripts.)
+4. **Check both links** from a terminal, replacing the D1 address with what its
+   display scrolls: `ping 192.168.1.228`, `ping 169.254.116.59`, then
+   `Test-NetConnection 192.168.1.228 -Port 502` and
+   `Test-NetConnection 169.254.116.59 -Port 502` (both `TcpTestSucceeded : True`).
+   If the D1 answers ping but not port 502, switch Modbus TCP Gateway ON in its
+   web page (step 5 above).
+5. **Prove each half alone first:** `python run_path.py 50` with the carriage
+   150 mm from the no-motor end (direction check, see "First run on a new
+   computer"), then `python Dance_Cycle.py` with the arm at START, then
+   `python run_both.py`.
+6. For long runs the PC must not sleep: plug it in and set the power plan so
+   it never sleeps while the show runs (`display_sweep.py` asks the OS to stay
+   awake, but a desktop power plan can still override that).
+
 ## Troubleshooting
 
 | What you see | What it means | What to do |
@@ -290,6 +361,7 @@ stops it earlier. Before a long run:
 | `drive in FAULT (0x.... E..)` | The D1 has tripped. The E-number is also on the display and in the web UI. | Fix the cause (E08 load supply low, E02 motor over-current, E10 temperature, ...), then run again: the script clears the fault at start. |
 | `Not moving. Fix these settings first:` | A stop, speed or acceleration is outside the limits in the SETTINGS block. | Edit the values. |
 | `timeout after ... s: at X mm, target Y mm` | The carriage did not get there in time. | Is something blocking it? Did it hit an end stop (wrong zero end)? |
+| The position counts up (`at 1261 mm`), no fault, but the carriage and belt do not move | The motor is getting no current. With no encoder the D1 cannot tell; it counts the steps it sent. Seen 21 Oct 2026 with the M12 plug on the motor cable unplugged. | Check the M12 plug at the motor and the X5 terminals on the D1, then `python run_path.py 50`. |
 | Carriage moves toward the end stop | The carriage was not at the no-motor end, or the motor polarity was changed in the web UI. | Ctrl-C. Push the carriage to the end without the motor; check the Motor page polarity setting. |
 | `NOTE: carriage is at X mm, NOT at the zero end` after Ctrl-C or an error | The run stopped early. | Push the carriage back to the zero end before the next run. |
 | Web UI arrow buttons do nothing | Normal while Drive Profile = Modbus TCP Gateway. | See "Jogging by hand" below. |

@@ -42,7 +42,7 @@ HIGH = 1850               # mm from the zero end: the other end
 SPEED = 50              # mm/s    (100 is comfortable; the rail gets loud above that)
 ACCEL = 25               # mm/s^2  how quickly to speed up and slow down
 PAUSE = 1              # seconds to rest at each end before turning around
-HOURS = 3.0               # how long to keep sweeping; 0 = until Ctrl-C
+HOURS = 0.1               # how long to keep sweeping; 0 = until Ctrl-C
 RETURN_TO_START = True    # leave True: the carriage parks at 0 so the next run starts zeroed
 
 MAX_SPEED = 300           # mm/s    the script refuses anything faster
